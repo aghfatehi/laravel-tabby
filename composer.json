@@ -1,0 +1,71 @@
+{
+    "name": "aghfatehi/laravel-tabby",
+    "description": "Tabby Pay in 4 Payment Gateway Integration for Laravel - Buy Now Pay Later (BNPL) solution supporting Saudi Arabia, UAE, and Kuwait.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "tabby",
+        "payment",
+        "gateway",
+        "bnpl",
+        "installments",
+        "pay-in-4",
+        "saudi-arabia",
+        "uae",
+        "kuwait"
+    ],
+    "support": {
+        "issues": "https://github.com/aghfatehi/laravel-tabby/issues",
+        "source": "https://github.com/aghfatehi/laravel-tabby"
+    },
+    "authors": [
+        {
+            "name": "Abdelghafour Fatehi",
+            "email": "fathi.a.n2002@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/http": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/routing": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/validation": "^10.0|^11.0|^12.0|^13.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0",
+        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+        "laravel/pint": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aghfatehi\\Tabby\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aghfatehi\\Tabby\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "./vendor/bin/pint",
+        "test-coverage": "phpunit --coverage-html coverage"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Aghfatehi\\Tabby\\TabbyServiceProvider"
+            ],
+            "aliases": {
+                "Tabby": "Aghfatehi\\Tabby\\Facades\\Tabby"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist"
+    }
+}
