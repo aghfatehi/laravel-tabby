@@ -266,7 +266,7 @@ This package is open-sourced software licensed under the [MIT license](LICENSE).
 
 - **Issues**: [GitHub Issues](https://github.com/aghfatehi/laravel-tabby/issues)
 - **Tabby Docs**: [https://docs.tabby.ai](https://docs.tabby.ai)
-- **Author**: Abdelghafour Fatehi ([fathi.a.n2002@gmail.com](mailto:fathi.a.n2002@gmail.com))
+- **Author**: AL-AGHBARI Fatehi ([fathi.a.n2002@gmail.com](mailto:fathi.a.n2002@gmail.com))
 
 ## Comparison with Tamara
 
