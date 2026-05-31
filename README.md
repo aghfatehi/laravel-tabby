@@ -63,12 +63,12 @@ Add these to your `.env` file:
 
 ```env
 TABBY_SANDBOX_MODE=true
-TABBY_SECRET_KEY=sk_test_your_secret_key_here
-TABBY_MERCHANT_CODE=ae
-TABBY_REGION=ae
-TABBY_CURRENCY=AED
-TABBY_LANGUAGE=en
-TABBY_LOGGING=true
+TABBY_SECRET_KEY="sk_test_your_secret_key_here" //get from tabby
+TABBY_MERCHANT_CODE="tabby_mechant_code" //get from tabby 
+TABBY_REGION="sa"
+TABBY_CURRENCY="SAR"
+TABBY_LANGUAGE="ar"
+TABBY_LOGGING="on"
 TABBY_ROUTE_PREFIX=tabby
 ```
 
