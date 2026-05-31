@@ -457,7 +457,7 @@ $formatted = Tabby::formatAmount(100.5); // "100.50"
 
 | Region      | Code | Sandbox URL              | Production URL          |
 |-------------|------|--------------------------|--------------------------|
-| Saudi Arabia| sa   | `https://api.tabby.ai`   | `https://api.tabby.sa`   |
+| Saudi Arabia| sa   | `https://api.tabby.sa`   | `https://api.tabby.sa`   |
 | UAE         | ae   | `https://api.tabby.ai`   | `https://api.tabby.ai`   |
 | Kuwait      | kw   | `https://api.tabby.ai`   | `https://api.tabby.ai`   |
 
