@@ -13,7 +13,9 @@ class TabbyController extends Controller
 {
     public function pay(Request $request)
     {
-        Log::info('Initiating Tabby checkout...');
+        if (config('tabby.logging', true)) {
+            Log::info('Initiating Tabby checkout...');
+        }
 
         $amount = $request->input('amount', 0);
         $currency = config('tabby.currency', 'SAR');
@@ -82,7 +84,9 @@ class TabbyController extends Controller
 
         try {
             $response = Tabby::createCheckout($requestBody);
-            Log::info('Tabby Checkout Response:', $response);
+            if (config('tabby.logging', true)) {
+                Log::info('Tabby Checkout Response:', $response);
+            }
 
             if (isset($response['error']) || isset($response['errors'])) {
                 $errorMessage = $response['message'] ?? ($response['errors'][0]['message'] ?? 'Payment failed');
@@ -111,7 +115,9 @@ class TabbyController extends Controller
 
     public function callback(Request $request)
     {
-        Log::info('Tabby Callback:', $request->all());
+        if (config('tabby.logging', true)) {
+            Log::info('Tabby Callback:', $request->all());
+        }
 
         $paymentId = $request->input('payment_id') ?? Session::get('tabby_payment_id');
 
@@ -121,7 +127,9 @@ class TabbyController extends Controller
 
         try {
             $response = Tabby::getPayment($paymentId);
-            Log::info('Tabby Payment Status:', $response);
+            if (config('tabby.logging', true)) {
+                Log::info('Tabby Payment Status:', $response);
+            }
 
             $status = strtolower($response['status'] ?? '');
 
@@ -145,30 +153,40 @@ class TabbyController extends Controller
 
     public function cancel(Request $request)
     {
-        Log::info('Tabby Payment Cancelled');
+        if (config('tabby.logging', true)) {
+            Log::info('Tabby Payment Cancelled');
+        }
         return redirect()->route('home')->with('warning', __('Payment was cancelled'));
     }
 
     public function failure(Request $request)
     {
-        Log::info('Tabby Payment Failed');
+        if (config('tabby.logging', true)) {
+            Log::info('Tabby Payment Failed');
+        }
         return redirect()->route('home')->withErrors(['error' => __('Payment failed')]);
     }
 
     public function webhook(Request $request)
     {
-        Log::info('Tabby Webhook Received:', $request->all());
+        if (config('tabby.logging', true)) {
+            Log::info('Tabby Webhook Received:', $request->all());
+        }
 
         $event = $request->input('event_type', '');
         $paymentId = $request->input('payment_id', '');
         $status = $request->input('status', '');
 
-        Log::info("Tabby Webhook - Event: {$event}, Payment: {$paymentId}, Status: {$status}");
+        if (config('tabby.logging', true)) {
+            Log::info("Tabby Webhook - Event: {$event}, Payment: {$paymentId}, Status: {$status}");
+        }
 
         switch ($event) {
             case 'payment_authorized':
             case 'payment_captured':
-                Log::info("Tabby payment {$event} for {$paymentId}");
+                if (config('tabby.logging', true)) {
+                    Log::info("Tabby payment {$event} for {$paymentId}");
+                }
                 break;
 
             case 'payment_failed':
