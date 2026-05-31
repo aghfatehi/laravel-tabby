@@ -98,11 +98,13 @@ class TabbyController extends Controller
                 Session::put('tabby_session_id', $response['id'] ?? null);
 
                 $webUrl = $response['configuration']['available_products']['installments'][0]['web_url']
-                    ?? $response['configuration']['available_products']['pay_by_installments']['web_url']
                     ?? null;
 
                 if ($webUrl) {
-                    return Redirect::to($webUrl);
+                    if (config('tabby.logging', true)) {
+                        Log::info('Redirecting to Tabby checkout URL: ' . $webUrl);
+                    }
+                    return Redirect::away($webUrl);
                 }
             }
 
