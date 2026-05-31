@@ -62,14 +62,34 @@ php artisan migrate
 Add these to your `.env` file:
 
 ```env
+# ─── Tabby Payment Gateway Environment Variables ──────────────────────────────
+
 TABBY_SANDBOX_MODE=true
-TABBY_SECRET_KEY="sk_test_your_secret_key_here" //get from tabby
-TABBY_MERCHANT_CODE="tabby_mechant_code" //get from tabby 
+# bool | Sandbox mode (testing) when true, Production mode when false
+
+TABBY_SECRET_KEY="sk_test_your_secret_key_here"
+# string | Your Tabby secret key from Tabby dashboard
+# Prefix: sk_test_ for sandbox | sk_live_ for production
+
+TABBY_MERCHANT_CODE="TABBY_MERCHANT_CODE"
+# string | Your merchant code from Tabby dashboard
+
 TABBY_REGION="sa"
+# string | Region determines API endpoint
+# "sa" = https://api.tabby.sa | "ae" = https://api.tabby.ai | "kw" = https://api.tabby.ai
+
 TABBY_CURRENCY="SAR"
+# string (3 chars) | Currency code
+# SAR = Saudi Riyal | AED = UAE Dirham | KWD = Kuwaiti Dinar
+
 TABBY_LANGUAGE="ar"
-TABBY_LOGGING="on"
-TABBY_ROUTE_PREFIX=tabby
+# string | Checkout widget language
+# "en" = English | "ar" = Arabic
+
+TABBY_LOGGING=true
+# bool | Log all API requests/responses to laravel.log
+# true = enabled | false = disabled
+
 ```
 
 ### 4. Service Provider
@@ -101,136 +121,270 @@ use Illuminate\Support\Facades\Redirect;
 
 /**
  * Example controller method showing the full Tabby checkout payload
- * with explicit default values and data types.
+ * with explicit default values, data types, and field descriptions.
  */
 public function initiateTabbyPayment(Request $request)
 {
-    // ─── 1. Prepare payment data ───────────────────────────────────
-    $amount   = 500.00;           // float - the order total
-    $currency = 'SAR';            // string (3 chars) - SAR | AED | KWD
-    $user     = $request->user(); // ?\Illuminate\Foundation\Auth\User
+    // ═══════════════════════════════════════════════════════════════════
+    //  1.  PAYMENT DATA
+    // ═══════════════════════════════════════════════════════════════════
 
-    // Buyer information (strings)
+    $amount   = 500.00;
+    // float | Order total (e.g. 500.00)
+    // Tabby requires minimum 50 AED or equivalent in other currencies
+
+    $currency = 'SAR';
+    // string (3 chars) | Payment currency
+    // 'SAR' = Saudi Riyal  |  'AED' = UAE Dirham  |  'KWD' = Kuwaiti Dinar
+    // Must match the currency registered in your Tabby account
+
+    $user     = $request->user();
+    // ?\Illuminate\Foundation\Auth\User | Authenticated user (may be null)
+
+    // ─── Buyer Information ───────────────────────────────────────────
+
     $firstName = $user?->name ?? 'Ahmed';
+    // string | Buyer's first name - falls back to default if user not logged in
+
     $lastName  = $user?->name ?? 'Ali';
+    // string | Buyer's last name
+
     $fullName  = trim("$firstName $lastName") ?: 'Ahmed Ali';
+    // string | Full name (max 255 chars)
+
     $email     = $user?->email ?? 'customer@example.com';
-    $phone     = $user?->phone ?? '500000001';        // without leading +
-    $dob       = $user?->dob ?? '1990-01-01';          // YYYY-MM-DD
+    // string | Email address (must be valid for payment notifications)
+    // Test: use otp.success@tabby.ai to always succeed
 
-    // Order references
-    $orderReferenceId = 'ORD-' . uniqid();              // string - your internal ID
-    $orderId          = uniqid('ord_');                         // string - displayed in Tabby
+    $phone     = $user?->phone ?? '500000001';
+    // string | Phone number WITHOUT country prefix (+)
+    // e.g. "500000001" for Saudi Arabia, "500000001" for UAE
+    // Test: "500000001" succeeds, "500000000" fails
 
-    // ─── 2. Build the complete checkout payload ────────────────────
+    $dob       = $user?->dob ?? '1990-01-01';
+    // string (YYYY-MM-DD) | Buyer's date of birth (optional, helps approval)
+
+    // ─── Order References ────────────────────────────────────────────
+
+    $orderReferenceId = 'ORD-' . uniqid();
+    // string | Your unique order reference (max 255 chars)
+    // Used to link your order with Tabby's payment
+
+    $orderId          = uniqid('ord_');
+    // string | Order ID displayed in Tabby's checkout UI
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  2.  CHECKOUT PAYLOAD
+    // ═══════════════════════════════════════════════════════════════════
+
     $requestBody = [
+
+        // ─── Payment ────────────────────────────────────────────────────
         'payment' => [
-            'amount'      => (string) $amount,          // "500.00" - must be string
-            'currency'    => $currency,                  // "AED"
-            'description' => 'Payment for order #1234',  // string - order summary
 
-            // ── Buyer ──────────────────────────────────────────────
+            'amount'      => (string) $amount,
+            // string | Total amount as string - "500.00"
+            // IMPORTANT: Tabby requires amount as string, NOT float
+            // Must be >= 50 AED or equivalent
+
+            'currency'    => $currency,
+            // string (3 chars) | Currency - "SAR" | "AED" | "KWD"
+
+            'description' => 'Payment for order #1234',
+            // string | Short payment description (max 255 chars)
+            // Displayed to the buyer in Tabby's checkout
+
+            // ── Buyer ─────────────────────────────────────────────────────
             'buyer' => [
-                'phone' => $phone,                       // "500000001"
-                'email' => $email,                       // "customer@example.com"
-                'name'  => $fullName,                    // "Ahmed Ali"
-                'dob'   => $dob,                         // "1990-01-01" (YYYY-MM-DD)
+                'phone' => $phone,
+                // string | Phone number - "500000001"
+                // WITHOUT country prefix (+966)
+
+                'email' => $email,
+                // string | Email - "customer@example.com"
+
+                'name'  => $fullName,
+                // string | Full name - "Ahmed Ali"
+
+                'dob'   => $dob,
+                // string (YYYY-MM-DD) | Date of birth - "1990-01-01"
             ],
 
-            // ── Buyer History (optional but recommended) ───────────
+            // ── Buyer History (optional, improves approval rate) ───────
             'buyer_history' => [
-                'registered_since'          => $user?->created_at?->format('Y-m-d\TH:i:s\Z')
-                                                ?? '2024-01-01T00:00:00Z',  // ISO8601
-                'loyalty_level'             => 0,                             // int
-                'wishlist_count'            => 3,                             // int
-                'is_social_networks_connected' => false,                      // bool
-                'is_phone_number_verified'  => !empty($phone),                // bool
-                'is_email_verified'         => !empty($email),                // bool
+                'registered_since' => $user?->created_at?->format('Y-m-d\TH:i:s\Z')
+                                         ?? '2024-01-01T00:00:00Z',
+                // string (ISO8601) | Customer registration date
+                // Older registration = higher approval chance
+
+                'loyalty_level' => 0,
+                // int | Loyalty tier (0 = new, 1 = regular, 2 = VIP)
+
+                'wishlist_count' => 3,
+                // int | Number of items in wishlist
+
+                'is_social_networks_connected' => false,
+                // bool | Does customer have social accounts linked?
+
+                'is_phone_number_verified' => !empty($phone),
+                // bool | Is phone number verified?
+
+                'is_email_verified' => !empty($email),
+                // bool | Is email verified?
             ],
 
-            // ── Order ──────────────────────────────────────────────
+            // ── Order ───────────────────────────────────────────────────
             'order' => [
-                'tax_amount'      => '0.00',              // "0.00" - string
-                'shipping_amount' => '0.00',              // "25.00" - string
-                'discount_amount' => '0.00',               // "0.00" - string
-                'updated_at'      => now()->format('Y-m-d\TH:i:s\Z'),          // ISO8601
-                'reference_id'    => $orderReferenceId,   // your unique order ref
+                'tax_amount'      => '0.00',
+                // string | Tax amount - "0.00" or actual tax
 
-                // ── Order Items ────────────────────────────────────
+                'shipping_amount' => '0.00',
+                // string | Shipping cost - "0.00" or actual cost
+
+                'discount_amount' => '0.00',
+                // string | Discount amount - "0.00" or actual discount
+
+                'updated_at' => now()->format('Y-m-d\TH:i:s\Z'),
+                // string (ISO8601) | Order last updated timestamp
+
+                'reference_id' => $orderReferenceId,
+                // string | Your order reference - "ORD-abc123"
+
+                // ── Order Items ─────────────────────────────────────────
                 'items' => [
                     [
-                        'title'           => 'Wireless Headphones',  // string - product name
-                        'description'     => 'Bluetooth 5.0',        // string - optional
-                        'quantity'        => 1,                       // int
-                        'unit_price'      => '500.00',                // string
-                        'discount_amount' => '0.00',                  // string
-                        'reference_id'    => 'SKU-001',              // string - product SKU
-                        'image_url'       => 'https://example.com/headphones.jpg', // string - optional
-                        'product_url'     => 'https://example.com/products/1',      // string - optional
-                        'category'        => 'Electronics',           // string - optional
+                        'title'           => 'Wireless Headphones',
+                        // string | Product name (required)
+
+                        'description'     => 'Bluetooth 5.0',
+                        // string | Product description (optional)
+
+                        'quantity'        => 1,
+                        // int | Quantity (must be >= 1)
+
+                        'unit_price'      => '500.00',
+                        // string | Unit price as string
+
+                        'discount_amount' => '0.00',
+                        // string | Discount on this item
+
+                        'reference_id'    => 'SKU-001',
+                        // string | SKU or product ID in your system
+
+                        'image_url'       => 'https://example.com/headphones.jpg',
+                        // string (URL) | Product image URL (optional)
+
+                        'product_url'     => 'https://example.com/products/1',
+                        // string (URL) | Product page URL (optional)
+
+                        'category'        => 'Electronics',
+                        // string | Product category (optional)
                     ],
                 ],
             ],
 
-            // ── Shipping Address ───────────────────────────────────
+            // ── Shipping Address ────────────────────────────────────────
             'shipping_address' => [
-                'city'    => 'Riyadh',                     // string
-                'address' => '3764 Al Urubah Rd',          // string
-                'zip'     => '12345',                      // string
+                'city'    => 'Riyadh',
+                // string | City - e.g. "Riyadh" or "Dubai"
+
+                'address' => '3764 Al Urubah Rd',
+                // string | Street address
+
+                'zip'     => '12345',
+                // string | ZIP / postal code
             ],
 
-            // ── Meta ───────────────────────────────────────────────
+            // ── Meta ────────────────────────────────────────────────────
             'meta' => [
                 'order_id' => $orderId,
-                'customer' => (string) $user->id ?? 'guest',                           // string
+                // string | Your internal order ID
+
+                'customer' => (string) ($user?->id ?? 'guest'),
+                // string | Customer ID in your system
             ],
         ],
 
-        // ─── 3. Session configuration ──────────────────────────────
-        'lang'          => config('tabby.language', 'en'),     // "en" | "ar"
-        'merchant_code' => config('tabby.merchant_code', 'ae'), // "ae" | "sa" | "kw"
+        // ─── Session Configuration ─────────────────────────────────────
+        'lang' => config('tabby.language', 'en'),
+        // string | Checkout language - "en" = English | "ar" = Arabic
 
-        // ─── 4. Merchant callback URLs ────────────────────────────
+        'merchant_code' => config('tabby.merchant_code', 'sa'),
+        // string | Merchant code in Tabby - "ae" | "sa" | "kw"
+        // Must match the code registered in your Tabby account
+
+        // ─── Merchant Callback URLs ───────────────────────────────────
         'merchant_urls' => [
-            'success' => route('tabby.callback'),     // GET/ANY - after payment
-            'cancel'  => route('tabby.cancel'),       // GET     - user cancels
-            'failure' => route('tabby.failure'),      // GET     - payment fails
+            'success' => route('tabby.callback'),
+            // string (URL) | Redirect browser here after successful payment
+            // Receives payment_id in query string
+
+            'cancel'  => route('tabby.cancel'),
+            // string (URL) | Redirect browser here if user cancels
+
+            'failure' => route('tabby.failure'),
+            // string (URL) | Redirect browser here if payment fails
         ],
     ];
 
-    // ─── 5. Send to Tabby API ──────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    //  3.  SEND REQUEST  (Submit to Tabby API)
+    // ═══════════════════════════════════════════════════════════════════
+
     Log::info('Tabby Checkout Request:', $requestBody);
 
     try {
         $response = Tabby::createCheckout($requestBody);
+        // array | API response contains:
+        //   ['payment']['id']          => "pay_xxxxxxxx"     (payment ID)
+        //   ['id']                     => "uuid-string"      (session ID)
+        //   ['configuration']['available_products']['installments'][0]['web_url'] => checkout URL
+
         Log::info('Tabby Checkout Response:', $response);
 
-        // ─── 6. Handle response ────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════
+        //  4.  HANDLE RESPONSE
+        // ═══════════════════════════════════════════════════════════════
+
         if (isset($response['error']) || isset($response['errors'])) {
+            // Tabby returned an error - show it to the user
             $error = $response['message']
                   ?? $response['errors'][0]['message']
                   ?? 'Payment initialization failed';
             return back()->withErrors(['error' => $error]);
         }
 
-        $paymentId = $response['payment']['id'] ?? null;        // "pay_xxxxxxxx"
-        $sessionId = $response['id'] ?? null;                    // session UUID
+        $paymentId = $response['payment']['id'] ?? null;
+        // string|null | "pay_xxxxxxxx" - Tabby payment ID (store in DB)
 
-        // Extract the checkout URL from available products
+        $sessionId = $response['id'] ?? null;
+        // string|null | UUID - checkout session ID
+
+        // Extract checkout URL from available products
         $webUrl = $response['configuration']['available_products']['installments'][0]['web_url']
                ?? $response['configuration']['available_products']['pay_by_installments']['web_url']
                ?? null;
+        // string|null | URL to redirect buyer to Tabby checkout
+        // e.g. "https://checkout.tabby.ai/..."
 
-        // Store for callback verification
-        session(['tabby_payment_id' => $paymentId]);
-        session(['tabby_session_id' => $sessionId]);
+        // Store in session for callback verification
+        session([
+            'tabby_payment_id' => $paymentId,
+            // string|null | Used in callback to verify payment status
+            'tabby_session_id' => $sessionId,
+            // string|null | Used in webhook to match the session
+        ]);
 
         if ($webUrl) {
-            return Redirect::away($webUrl);  // redirect to Tabby checkout page
+            return Redirect::away($webUrl);
+            // Redirect buyer to Tabby checkout page
         }
 
         return back()->withErrors(['error' => 'No checkout URL returned']);
+        // Unexpected: no checkout URL in response
+
     } catch (\Throwable $e) {
+        // API connection error (Network, Timeout, etc.)
         Log::error('Tabby Checkout Exception: ' . $e->getMessage());
         return back()->withErrors(['error' => $e->getMessage()]);
     }
