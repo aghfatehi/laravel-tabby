@@ -2,35 +2,15 @@
 
 namespace Aghfatehi\Tabby\Services;
 
-use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
 class TabbyService
 {
-    protected Client $client;
-
     protected array $config;
 
     public function __construct()
     {
         $this->config = config('tabby');
-    }
-
-    protected function client(): Client
-    {
-        if (!isset($this->client)) {
-            $this->client = new Client([
-                'base_uri' => $this->baseUrl(),
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->config['secret_key'],
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ],
-                'timeout' => 30,
-            ]);
-        }
-
-        return $this->client;
     }
 
     public function baseUrl(): string
@@ -117,81 +97,82 @@ class TabbyService
 
     protected function get(string $path, array $query = []): array
     {
-        try {
-            $response = $this->client()->get($path, ['query' => $query]);
-            $body = json_decode($response->getBody()->getContents(), true);
-
-            $this->log('GET', $path, ['query' => $query], $body);
-
-            return $body ?? [];
-        } catch (\Throwable $e) {
-            $this->logError('GET', $path, $e);
-            throw $e;
+        $url = $this->baseUrl() . $path;
+        if (!empty($query)) {
+            $url .= '?' . http_build_query($query);
         }
+
+        return $this->makeApiRequest('GET', $url, null);
     }
 
     protected function post(string $path, array $body = []): array
     {
-        try {
-            $response = $this->client()->post($path, ['json' => $body]);
-            $result = json_decode($response->getBody()->getContents(), true);
+        $url = $this->baseUrl() . $path;
 
-            $this->log('POST', $path, $body, $result);
-
-            return $result ?? [];
-        } catch (\Throwable $e) {
-            $this->logError('POST', $path, $e);
-            throw $e;
-        }
+        return $this->makeApiRequest('POST', $url, json_encode($body));
     }
 
     protected function put(string $path, array $body = []): array
     {
-        try {
-            $response = $this->client()->put($path, ['json' => $body]);
-            $result = json_decode($response->getBody()->getContents(), true);
+        $url = $this->baseUrl() . $path;
 
-            $this->log('PUT', $path, $body, $result);
-
-            return $result ?? [];
-        } catch (\Throwable $e) {
-            $this->logError('PUT', $path, $e);
-            throw $e;
-        }
+        return $this->makeApiRequest('PUT', $url, json_encode($body));
     }
 
     protected function delete(string $path): array
     {
-        try {
-            $response = $this->client()->delete($path);
-            $result = json_decode($response->getBody()->getContents(), true);
+        $url = $this->baseUrl() . $path;
 
-            $this->log('DELETE', $path, [], $result);
-
-            return $result ?? [];
-        } catch (\Throwable $e) {
-            $this->logError('DELETE', $path, $e);
-            throw $e;
-        }
+        return $this->makeApiRequest('DELETE', $url);
     }
 
-    protected function log(string $method, string $path, array $request, mixed $response): void
+    protected function makeApiRequest(string $method, string $url, ?string $body = null): array
     {
+        $headers = [
+            'Authorization: Bearer ' . $this->config['secret_key'],
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ];
+
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+
+        if ($body) {
+            curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+        }
+
+        $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $error = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($error) {
+            Log::error('Tabby API Error:', ['error' => $error, 'url' => $url, 'method' => $method]);
+            throw new \Exception($error);
+        }
+
+        $decoded = json_decode($response, true);
+
         if ($this->config['logging'] ?? true) {
             Log::debug('Tabby API', [
                 'method' => $method,
-                'path' => $path,
-                'request' => $request,
-                'response' => $response,
+                'path' => parse_url($url, PHP_URL_PATH),
+                'http_code' => $httpCode,
+                'response' => $decoded,
             ]);
         }
-    }
 
-    protected function logError(string $method, string $path, \Throwable $e): void
-    {
-        Log::error("Tabby API {$method} Error", [
-            'path' => $path,
-            'message' => $e->getMessage(),
-        ]);
+        return $decoded ?? [];
     }
 }

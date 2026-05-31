@@ -21,7 +21,7 @@ Customers can split their payments into 4 interest-free installments, increasing
 - ✅ Multi-region support (SA, AE, KW)
 - ✅ Multi-currency support (SAR, AED, KWD)
 - ✅ Arabic & English language support
-- ✅ Guzzle HTTP client (no raw cURL)
+- ✅ Native PHP cURL client (no external HTTP dependencies)
 - ✅ Configurable routes prefix & middleware
 - ✅ Transaction logging migration
 - ✅ Laravel 10, 11, 12 & 13 compatible
