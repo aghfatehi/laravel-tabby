@@ -126,8 +126,10 @@ class TabbyService
         return $this->makeApiRequest('DELETE', $url);
     }
 
-    protected function makeApiRequest(string $method, string $url, ?string $body = null): array
+    private function makeApiRequest($method, $endpoint, $body = null)
     {
+        $url = $this->getBaseUrl() . $endpoint;
+
         $headers = [
             'Authorization: Bearer ' . $this->config['secret_key'],
             'Content-Type: application/json',
@@ -158,21 +160,35 @@ class TabbyService
         curl_close($curl);
 
         if ($error) {
-            Log::error('Tabby API Error:', ['error' => $error, 'url' => $url, 'method' => $method]);
+            Log::error('Tabby API Error:', ['error' => $error, 'url' => $url]);
             throw new \Exception($error);
         }
 
         $decoded = json_decode($response, true);
 
-        if ($this->config['logging'] ?? true) {
-            Log::debug('Tabby API', [
-                'method' => $method,
-                'path' => parse_url($url, PHP_URL_PATH),
-                'http_code' => $httpCode,
-                'response' => $decoded,
-            ]);
+        // Log for debugging
+        if (config('tabby.logging', true)) {
+            Log::debug(
+                "Tabby API Response:\n" . json_encode([
+                    'method' => $method,
+                    'endpoint' => $endpoint,
+                    'http_code' => $httpCode,
+                    'response' => $decoded
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+            );
         }
 
         return $decoded ?? [];
+    }
+
+    private function getBaseUrl()
+    {
+        $sandbox = config('tabby.sandbox', true);
+        if ($sandbox) {
+            return config('tabby.sandbox_url', 'https://api.tabby.ai');
+        }
+
+        $region = config('tabby.region', 'sa');
+        return config("tabby.api_urls.{$region}", 'https://api.tabby.ai');
     }
 }
