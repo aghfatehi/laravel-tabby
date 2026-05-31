@@ -482,6 +482,14 @@ Publish the config and modify the `routes` section:
 ],
 ```
 
+## Tabby Testing Credentials
+
+UAE: otp.success@tabby.ai, phone: +971500000001
+KSA: otp.success@tabby.ai, phone: +966500000001
+Kuwait: otp.success@tabby.ai, phone: +96590000001
+
+otp test: 8888
+
 ## Test Cards (Sandbox)
 
 | Card Type  | Number             | Expiry | CVV  |
@@ -490,12 +498,6 @@ Publish the config and modify the `routes` section:
 | Mastercard | 5123450000000008   | 07/39  | 100  |
 | AMEX       | 345678901234564    | 07/39  | 1000 |
 
-### Test Customer
-
-```
-Email: test@example.com
-Phone: +966500000000
-```
 
 ## Testing
 
