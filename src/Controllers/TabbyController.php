@@ -25,6 +25,7 @@ class TabbyController extends Controller
         $lastName = $user?->name ?? 'Customer';
         $email = $user?->email ?? $request->input('email', 'otp.success@tabby.ai');
         $phone = $user?->phone ?? $request->input('phone', '500000001');
+        $referenceId = $request->input('reference_id', uniqid('tabby_', true));
 
         $requestBody = [
             'payment' => [
@@ -50,7 +51,7 @@ class TabbyController extends Controller
                     'shipping_amount' => $request->input('shipping_amount', '0.00'),
                     'discount_amount' => $request->input('discount_amount', '0.00'),
                     'updated_at' => now()->format('Y-m-d\TH:i:s\Z'),
-                    'reference_id' => uniqid('tabby_', true),
+                    'reference_id' => $referenceId,
                     'items' => $request->input('items', [
                         [
                             'title' => 'Order Payment',
@@ -58,7 +59,7 @@ class TabbyController extends Controller
                             'quantity' => 1,
                             'unit_price' => (string) $amount,
                             'discount_amount' => '0.00',
-                            'reference_id' => uniqid('item_'),
+                            'reference_id' => $referenceId,
                             'category' => 'Digital Service',
                         ],
                     ]),
@@ -69,16 +70,16 @@ class TabbyController extends Controller
                     'zip' => $request->input('zip', '12345'),
                 ],
                 'meta' => [
-                    'order_id' => $request->input('order_id', uniqid('ord_')),
+                    'order_id' => $request->input('order_id', $referenceId),
                     'customer' => (string) ($user?->id ?? 'guest'),
                 ],
             ],
             'lang' => config('tabby.language', 'en'),
             'merchant_code' => config('tabby.merchant_code', ''),
             'merchant_urls' => [
-                'success' => route('tabby.callback'),
-                'cancel' => route('tabby.cancel'),
-                'failure' => route('tabby.failure'),
+                'success' => route('tabby.callback', ['reference_id' => $referenceId]),
+                'cancel' => route('tabby.cancel', ['reference_id' => $referenceId]),
+                'failure' => route('tabby.failure', ['reference_id' => $referenceId]),
             ],
         ];
 
@@ -96,8 +97,10 @@ class TabbyController extends Controller
             if (isset($response['payment']['id'])) {
                 Session::put('tabby_payment_id', $response['payment']['id']);
                 Session::put('tabby_session_id', $response['id'] ?? null);
+                Session::put('tabby_reference_id', $referenceId);
 
                 $webUrl = $response['configuration']['available_products']['installments'][0]['web_url']
+                    ?? $response['configuration']['available_products']['pay_by_installments']['web_url']
                     ?? null;
 
                 if ($webUrl) {
