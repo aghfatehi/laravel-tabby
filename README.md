@@ -165,12 +165,14 @@ use Illuminate\Support\Facades\Redirect;
 
         // ─── Order References ────────────────────────────────────────────
 
-        $orderReferenceId = 'ORD-' . uniqid();
+        $orderReferenceId = $request->input('reference_id', 'ORD-' . uniqid());
         // string | Your unique order reference (max 255 chars)
         // Used to link your order with Tabby's payment
+        // Pass via POST request to routes: tabby.pay, tabby.callback, tabby.cancel, tabby.failure
 
-        $orderId          = uniqid('ord_');
+        $orderId          = $request->input('order_id', uniqid('ord_'));
         // string | Order ID displayed in Tabby's checkout UI
+        // Pass via POST request to routes: tabby.pay
 
         // ═══════════════════════════════════════════════════════════════════
         //  2.  CHECKOUT PAYLOAD
@@ -397,16 +399,57 @@ use Illuminate\Support\Facades\Redirect;
 
 The package registers these routes under the configured prefix (`/tabby` by default):
 
-| Method | URI                    | Name                  | Description               |
-|--------|------------------------|-----------------------|---------------------------|
-| POST   | `/tabby/pay`           | `tabby.pay`           | Initiate checkout         |
-| ANY    | `/tabby/callback`      | `tabby.callback`      | Payment callback          |
-| GET    | `/tabby/cancel`        | `tabby.cancel`        | Cancel handler            |
-| GET    | `/tabby/failure`       | `tabby.failure`       | Failure handler           |
-| POST   | `/tabby/webhook`       | `tabby.webhook`       | Webhook receiver          |
-| POST   | `/tabby/capture`       | `tabby.capture`       | Capture payment           |
-| POST   | `/tabby/refund`        | `tabby.refund`        | Refund payment            |
-| GET    | `/tabby/payment/{id}`  | `tabby.payment.details` | Payment details         |
+| Method | URI                    | Name                    | Description               |
+|--------|------------------------|-------------------------|---------------------------|
+| POST   | `/tabby/pay`           | `tabby.pay`             | Initiate checkout         |
+| ANY    | `/tabby/callback`      | `tabby.callback`        | Payment callback          |
+| GET    | `/tabby/cancel`        | `tabby.cancel`          | Cancel handler            |
+| GET    | `/tabby/failure`       | `tabby.failure`         | Failure handler           |
+| POST   | `/tabby/webhook`       | `tabby.webhook`         | Webhook receiver          |
+| POST   | `/tabby/capture`       | `tabby.capture`         | Capture payment           |
+| POST   | `/tabby/refund`        | `tabby.refund`          | Refund payment            |
+| GET    | `/tabby/payment/{id}`  | `tabby.payment.details` | Payment details           |
+
+#### Request Parameters
+
+| Route              | Parameter       | Type   | Required | Description                                      |
+|--------------------|-----------------|--------|----------|--------------------------------------------------|
+| `tabby.pay`        | `amount`        | number | yes      | Order total                                      |
+|                    | `reference_id`  | string | no       | Your unique order reference                      |
+|                    | `order_id`      | string | no       | Internal order ID                                |
+|                    | `description`   | string | no       | Payment description                              |
+|                    | `phone`         | string | no       | Buyer phone (without + prefix)                   |
+|                    | `email`         | string | no       | Buyer email                                      |
+|                    | `items`         | array  | no       | Order items array                                |
+|                    | `tax_amount`    | string | no       | Tax amount                                       |
+|                    | `shipping_amount` | string | no     | Shipping amount                                  |
+|                    | `discount_amount` | string | no    | Discount amount                                  |
+|                    | `merchant_urls` | object | no       | Custom callback URLs (success, cancel, failure)  |
+| `tabby.callback`   | `payment_id`    | string | no       | Tabby payment ID (auto from Tabby redirect)      |
+|                    | `reference_id`  | string | no       | Your order reference (auto from redirect URL)    |
+| `tabby.capture`    | `payment_id`    | string | yes      | Tabby payment ID to capture                      |
+|                    | `amount`        | number | yes      | Amount to capture                                |
+| `tabby.refund`     | `payment_id`    | string | yes      | Tabby payment ID to refund                       |
+|                    | `amount`        | number | yes      | Amount to refund                                 |
+
+**Example - initiating checkout via route:**
+```php
+use Illuminate\Support\Facades\Http;
+
+$response = Http::post('/tabby/pay', [
+    'amount'       => 500.00,
+    'reference_id' => 'ORD-12345',
+    'order_id'     => 'ORD-12345',
+    'description'  => 'Payment for order #12345',
+    'phone'        => '500000001',
+    'email'        => 'otp.success@tabby.ai',
+    'merchant_urls' => [
+        'success' => route('tabby.callback', ['reference_id' => 100]),
+        'cancel'  => route('tabby.cancel', ['reference_id' => 100]),
+        'failure' => route('tabby.failure', ['reference_id' => 100]),
+    ],
+]);
+```
 
 ### API Methods
 
